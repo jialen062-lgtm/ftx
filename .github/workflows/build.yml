@@ -22,12 +22,23 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.8'
 
       - name: Build Mod JAR
-        run: gradle build --no-daemon
+        run: |
+          if [ -f "build.gradle" ]; then
+            gradle build --no-daemon
+          elif [ -f "jjkmod/build.gradle" ]; then
+            cd jjkmod && gradle build --no-daemon
+          else
+            echo "Error: build.gradle not found in root or jjkmod/" && exit 1
+          fi
 
       - name: Upload Built JAR
         uses: actions/upload-artifact@v4
         with:
           name: jjkmod-1.20.1-jar
-          path: build/libs/*.jar
+          path: |
+            build/libs/*.jar
+            jjkmod/build/libs/*.jar
