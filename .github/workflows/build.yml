@@ -27,18 +27,19 @@ jobs:
 
       - name: Build Mod JAR
         run: |
-          if [ -f "build.gradle" ]; then
-            gradle build --no-daemon
-          elif [ -f "jjkmod/build.gradle" ]; then
-            cd jjkmod && gradle build --no-daemon
-          else
-            echo "Error: build.gradle not found in root or jjkmod/" && exit 1
+          BUILD_FILE=$(find . -maxdepth 4 -name "build.gradle" | head -n 1)
+          if [ -z "$BUILD_FILE" ]; then
+            echo "错误：仓库里找不到 build.gradle！当前仓库文件如下："
+            ls -la
+            exit 1
           fi
+          PROJECT_DIR=$(dirname "$BUILD_FILE")
+          echo "找到项目目录: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+          gradle build --no-daemon
 
       - name: Upload Built JAR
         uses: actions/upload-artifact@v4
         with:
           name: jjkmod-1.20.1-jar
-          path: |
-            build/libs/*.jar
-            jjkmod/build/libs/*.jar
+          path: "**/build/libs/*.jar"
