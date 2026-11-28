@@ -1,12 +1,11 @@
-name: Build WarningZone (1.20.1 Forge)
+name: Build Forge 1.20.1 Mod
 
 on:
-  workflow_dispatch:
   push:
     branches: [ main, master ]
-
-permissions:
-  contents: read
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -15,64 +14,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
           java-version: '17'
+          distribution: 'temurin'
 
-      - name: Set up Gradle 8.8
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.8'
-
-      - name: Locate or extract Gradle project
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          # 1. 若仓库根目录已有 build.gradle，直接使用根目录
-          if [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
-            PROJECT_DIR="."
-          else
-            # 2. 若仓库内存在包含源码的 zip 压缩包，先解压到 extracted-source
-            ZIP_FILE="$(find . -maxdepth 2 -type f -name '*.zip' -not -path './.git/*' | head -n 1 || true)"
-            if [ -n "$ZIP_FILE" ]; then
-              rm -rf extracted-source
-              mkdir -p extracted-source
-              unzip -oq "$ZIP_FILE" -d extracted-source
-            fi
-
-            # 3. 自动搜索 build.gradle 所在目录
-            BUILD_FILE="$(find . -type f \( -name 'build.gradle' -o -name 'build.gradle.kts' \) -not -path './.git/*' | head -n 1 || true)"
-            if [ -z "$BUILD_FILE" ]; then
-              echo "::error::未找到 build.gradle，请确认仓库中已包含模组源码或 WarningZone-1.20.1-Forge.zip。"
-              exit 1
-            fi
-            PROJECT_DIR="$(dirname "$BUILD_FILE")"
-          fi
-
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Using Gradle project directory: $PROJECT_DIR"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Build Mod JAR
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$PROJECT_DIR"
-          gradle --no-daemon clean build --stacktrace
+        run: gradle build --no-daemon
 
-      - name: Collect JAR files
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p release
-          find "$PROJECT_DIR/build/libs" -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' -exec cp {} release/ \;
-          ls -lh release/
-
-      - name: Upload artifact
+      - name: Upload Built JAR
         uses: actions/upload-artifact@v4
         with:
-          name: WarningZone-1.20.1-Forge
-          path: release/*.jar
-          if-no-files-found: error
+          name: jjkmod-1.20.1-jar
+          path: build/libs/*.jar
